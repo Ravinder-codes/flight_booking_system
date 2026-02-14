@@ -12,3 +12,13 @@ module.exports.trending_fight = async (req, res) => {
         data: flights
     })
 }   
+
+module.exports.searchFlights = async (req, res) => {
+    const result = await Flight.searchFlights(req);
+    console.log(result);
+    return res.status(200).json(
+        {
+            message: result
+        }
+    );
+}
