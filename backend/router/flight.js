@@ -5,7 +5,8 @@ const flightController = require('../controller/flight')
 const router = express.Router();
 
 
-router.get('/trending_flight', flightController.trending_fight)
 router.get('/search', flightController.searchFlights);
+router.get('/relevant-flights', flightController.relevantFlights);
+router.get('/details', flightController.getFlightDetails);
 
 module.exports = router;

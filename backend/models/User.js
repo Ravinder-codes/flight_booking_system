@@ -14,9 +14,9 @@ const userSchema = mongoose.Schema({
     }
 })
 
-const User = new mongoose.model('dim_user', userSchema, 'dim_user');
+const User = mongoose.model('dim_user', userSchema, 'dim_user');
 
-User.addUser = async (userObj) => {
+User.addUser = (userObj) => {
     console.log(userObj)
     // TODO: Convert to hash
     
