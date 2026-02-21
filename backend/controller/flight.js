@@ -1,18 +1,7 @@
 const Flight = require('../models/Flight');
+const utils = require('../Utils/commonUtils')
+const { Types: { ObjectId } } = require('mongoose')
 
-
-const top5DomesticRelevantFlights = async(country) => {
-    /*
-        DOC STRING  
-    */
-}
-
-const top5InternationalRelevantFlights = async (arrivalCountry, destinationCountry) => {
-    /*
-        DOC STRING
-    */
-
-}
 
 module.exports.searchFlights = async (req, res) => {
     /*
@@ -25,19 +14,43 @@ module.exports.searchFlights = async (req, res) => {
         sortOrder
     } = req.query || {};    
 
-    const filters = {
-        ... (from && {departure: from}),
-        ... ( to && {arrival: to})
-    };
-    
     const sortCondition = sortBy && { [sortBy] : sortOrder === 'desc'? -1 : 1 }
     
     try {
-        const result = await Flight.find(filters).sort(sortCondition);
+        const flights = await Flight.aggregate([
+            {
+                $lookup: {
+                    from: "dim_airport",
+                    localField: "arrival_airport_id",
+                    foreignField: "_id",
+                    as: "arrivalAirport"
+                }
+            },
+            {
+                $unwind: "$arrivalAirport"
+            },
+            {
+                $lookup: {
+                    from: "dim_airport",
+                    localField: "departure_airport_id",
+                    foreignField: "_id",
+                    as: "departureAirport"
+                }
+            },
+            {
+                $unwind: "$departureAirport"
+            },  
+            {
+                $match: {
+                    ... (to && {"arrivalAirport.city": to}),
+                    ... (from && {"departureAirport.city": from})
+                }
+            },
+        ])
 
         return res.status(200).json(
             {
-                message: result
+                flights: flights,
             }
         );
     } catch (err) {
@@ -55,35 +68,70 @@ module.exports.relevantFlights = async (req, res) => {
         DOC STRING
     */
 
+    // TODO: Validate the fligthId
+
+    const flightId = new ObjectId(req.query.flightId);
     const {
-        arrivalCountry,
-        destinationCountry
-    } = req.body;
+        arrival_airport_id : { city : arrivalCity },
+        departure_airport_id : { city : departureCity },
+        arrival_airport_id : { country : arrivalCountry},
+        departure_airport_id : { country : departureCountry},
+        price : flightPrice
+    } = await utils.getFlightDetails(flightId);
 
-    const response = undefined;
-
-    try {
-        if (arrivalCountry === destinationCountry) {
-            response = await top5DomesticRelevantFlights(arrivalCountry);
+    console.log(flightPrice)
+    const relevantFlights = await Flight.aggregate([
+        {
+            $lookup: {
+                from : "dim_airport",
+                localField : "arrival_airport_id",
+                foreignField : "_id",
+                as : "arrivalAirport"
+            }
+        },
+        {
+            $unwind : "$arrivalAirport"
+        },
+        {
+            $lookup : {
+                from : "dim_airport",
+                localField : "departure_airport_id",
+                foreignField: "_id",
+                as : "departureAirport"
+            }
+        }, 
+        {
+            $unwind : "$departureAirport"
+        },
+        {
+            $match : {
+                _id : { $ne : flightId }
+            }
+        },
+        {
+            $set : {
+                rating : {
+                    $add : [
+                        // Rate the relevant flights based on their matching with the searched flight
+                        { $cond : [{ $eq: [ "$arrivalAirport.city", arrivalCity]}, 4, 0]},
+                        { $cond : [{ $eq: [ "$departureAirport.city", departureCity]}, 8, 0]},
+                        { $cond : [{ $eq: [ "$arrivalAirport.country", arrivalCountry ]}, 1, 0]},
+                        { $cond : [{ $eq: [ "$departureAirport.country", departureCountry ]}, 2, 0]}
+                    ]
+                },
+                priceDiff : {
+                    $abs : { $subtract : [ "$price", flightPrice ] }
+                } 
+            }
+        },
+        {
+            $sort : { rating : -1, priceDiff : 1 }
+        },
+        {
+            $limit: 5
         }
-        else {
-            response = await top5InternationalRelevantFlights(arrivalCountry, destinationCountry);
-        }
-
-        return res
-            .status(200)
-            .json({
-                relevantFlights: response
-            });
-    } catch (err) {
-        console.log(err);
-        return res
-            .status(500)
-            .json({
-                message: `Error occured while processing request`
-            });
-    }
-
+    ])
+    console.log(relevantFlights);
 }
 
 module.exports.getFlightDetails = async (req, res) => {
