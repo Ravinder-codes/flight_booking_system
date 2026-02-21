@@ -9,7 +9,7 @@ const flightSchema = new mongoose.Schema({
     },
     arrival_airport_id: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'aim_airport'
+        ref: 'dim_airport'
     },
     aircraft_id: {
         type: mongoose.Schema.Types.ObjectId,
