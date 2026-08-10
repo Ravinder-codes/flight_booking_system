@@ -1,0 +1,71 @@
+pipeline {
+    agent any
+    stages {
+        stage('Hello') {
+            steps {
+                echo 'Hello from Jenkins!'
+            }
+        }
+        stage('Build') {
+
+            steps {
+
+                echo 'Building the application...'
+
+                sh 'echo Build successful'
+
+            }
+
+        }
+
+
+
+        stage('Test') {
+
+            steps {
+
+                echo 'Running tests...'
+
+                sh 'echo Tests passed'
+
+            }
+
+        }
+
+
+
+        stage('Deploy') {
+
+            steps {
+
+                echo 'Deploying application...'
+
+                sh 'echo Deployment successful'
+
+            }
+
+        }
+
+    }
+
+
+
+    post {
+
+        success {
+
+            echo '🎉 Jenkins pipeline completed successfully!'
+
+        }
+
+
+
+        failure {
+
+            echo '❌ Jenkins pipeline failed!'
+
+        }
+
+    }
+
+}
